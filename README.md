@@ -139,3 +139,5 @@ src/main/java/com/dynamicisland/
 - 通知的"成就"依赖 `ToastComponentMixin`；失效时仅少一类通知。
 - F3 调试屏幕打开时默认隐藏（可关）。
 - 圆角关闭后退化为矩形填充，极低端机可提帧。
+
+##此模组由D老师协助开发
