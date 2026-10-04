@@ -1,0 +1,17 @@
+build/
+run/
+run-server/
+.gradle/
+.idea/
+*.iml
+*.ipr
+*.iws
+out/
+
+# 日志
+*.log
+logs/
+
+# 系统
+.DS_Store
+Thumbs.db

@@ -1,0 +1,46 @@
+modLoader = "javafml"
+loaderVersion = "[47,)"
+license = "MIT"
+issueTrackerURL = ""
+
+[[mods]]
+modId = "dynamicisland"
+version = "${version}"
+displayName = "Dynamic Island"
+authors = "hlirqi"
+description = '''
+把 iPhone 灵动岛搬进 Minecraft。
+
+顶部胶囊常驻显示帧率、内存、坐标与游戏时长，挖掘、使用物品、播放唱片时自动展开为进度卡片；
+信息条可轮换显示坐标、生态群系、时间、速度、实体与粒子数、当前所处结构。
+
+灵动焦点是胶囊左右两侧的圆形小窗：唱片音乐、昼夜更替、装备耐久、长效药水、饥饿与氧气、
+死亡掉落物回收、被标记状态、僵尸村民治愈等需要长时间关注的信息，会先在胶囊上提示数秒，
+随后自动并入焦点，用圆环持续呈现进度，按下呼出键可随时收回胶囊查看详情。
+
+通知中心覆盖背包已满、耐久告急、效果结束、系统告警、玩家进出服务器、宠物意外等场景，
+支持紧急分级音效与历史回看。可选与 Tritium Music 联动，展开时用专辑封面取色并铺模糊背景。
+'''
+logoFile = ""
+
+[[dependencies.dynamicisland]]
+    modId = "forge"
+    mandatory = true
+    versionRange = "[47,)"
+    ordering = "NONE"
+    side = "CLIENT"
+
+[[dependencies.dynamicisland]]
+    modId = "minecraft"
+    mandatory = true
+    versionRange = "[1.20.1,1.21)"
+    ordering = "NONE"
+    side = "CLIENT"
+
+# 可选联动：Tritium Music。未安装时本模组照常运行
+[[dependencies.dynamicisland]]
+    modId = "tritium_music"
+    mandatory = false
+    versionRange = "*"
+    ordering = "AFTER"
+    side = "CLIENT"

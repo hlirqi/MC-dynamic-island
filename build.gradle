@@ -1,0 +1,85 @@
+// ===== Dynamic Island · Forge 1.20.1 标准 MDK 结构 =====
+plugins {
+    id 'eclipse'
+    id 'idea'
+    id 'maven-publish'
+    id 'net.minecraftforge.gradle' version '[6.0,6.2)'
+    id 'org.spongepowered.mixin' version '0.7.+'
+}
+
+version = mod_version
+group = mod_group_id
+base { archivesName = 'dynamicisland' }
+
+java { toolchain { languageVersion = JavaLanguageVersion.of(17) } }
+
+minecraft {
+    mappings channel: mapping_channel, version: mapping_version
+    copyIdeResources = true
+
+    runs {
+        client {
+            workingDirectory project.file('run')
+            property 'forge.logging.markers', 'REGISTRIES'
+            property 'forge.logging.console.level', 'debug'
+            property 'forge.enabledGameTestNamespaces', 'dynamicisland'
+            property 'mixin.env.remapRefMap', 'true'
+            property 'mixin.env.refMapRemappingFile', "${projectDir}/build/createSrgToMcp/output.srg"
+            jvmArg '-XX:+AllowEnhancedClassRedefinition'
+            mods { dynamicisland { source sourceSets.main } }
+        }
+        server {
+            workingDirectory project.file('run-server')
+            property 'forge.logging.console.level', 'debug'
+            mods { dynamicisland { source sourceSets.main } }
+        }
+    }
+}
+
+sourceSets {
+    main {
+        ext.refMap = 'dynamicisland.refmap.json'
+    }
+}
+
+// Mixin 配置 + refmap 生成（由 org.spongepowered.mixin 插件提供）
+mixin {
+    add sourceSets.main, 'dynamicisland.refmap.json'
+    config 'dynamicisland.mixins.json'
+}
+
+repositories { mavenCentral() }
+
+dependencies {
+    minecraft "net.minecraftforge:forge:${minecraft_version}-${forge_version}"
+    annotationProcessor 'org.spongepowered:mixin:0.8.5:processor'
+}
+
+jar {
+    manifest {
+        attributes([
+            "Specification-Title"     : "dynamicisland",
+            "Specification-Vendor"    : "dynamicisland",
+            "Specification-Version"   : "1",
+            "Implementation-Title"    : project.name,
+            "Implementation-Version"  : "${project.version}".toString(),
+            "Implementation-Vendor"   : "dynamicisland",
+            "Implementation-Timestamp": new Date().format("yyyy-MM-dd'T'HH:mm:ssZ"),
+            "MixinConfigs"            : "dynamicisland.mixins.json"
+        ])
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}
+
+processResources {
+    inputs.property 'version', project.version
+    filesMatching(['META-INF/mods.toml']) { expand version: project.version }
+}
+
+publishing {
+    publications { mavenJava(MavenPublication) { artifact jar } }
+    repositories { maven { url = "file://${project.projectDir}/mcmodsrepo" } }
+}
