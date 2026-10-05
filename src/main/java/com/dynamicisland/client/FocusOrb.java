@@ -25,18 +25,26 @@ public class FocusOrb {
     public static final int SLOT_LEFT = 1;
 
     public enum Kind { NONE, MUSIC, TRITIUM, DAY, DURABILITY, POTION, HUNGER, AIR,
-        DROP, MARK, CURE }
+        DROP, MARK, CURE, XPORB, CLOUD, ENDERMITE, TIMER_A, TIMER_B }
 
-    /** 占位优先级，数字大的优先。氧气/耐久最紧急，昼夜只是预告所以最低。 */
+    /**
+     * 占位优先级，数字大的优先。氧气最紧急，昼夜只是预告所以最低。
+     * 自定义定时器排得很靠前：那是玩家自己明确要盯的东西。
+     */
     private static int priority(Kind k) {
         switch (k) {
-            case AIR:        return 9;
-            case DROP:       return 8;   // 掉落物会永久消失，硬终点最不能错过的
-            case MARK:       return 7;   // PVP 里被标记是生死信息
-            case DURABILITY: return 6;
-            case HUNGER:     return 5;
-            case POTION:     return 4;
-            case CURE:       return 3;
+            case AIR:        return 13;
+            case DROP:       return 12;  // 掉落物会永久消失，硬终点最不能错过的
+            case TIMER_A:    return 11;  // 玩家自定义的倒计时 / 计时器
+            case TIMER_B:    return 11;
+            case XPORB:      return 10;  // 经验球同样是永久消失的硬终点，但满地都是
+            case MARK:       return 9;   // PVP 里被标记是生死信息
+            case CLOUD:      return 8;   // 持续伤害 / 治疗云的剩余时间，战斗里很关键
+            case DURABILITY: return 7;
+            case HUNGER:     return 6;
+            case POTION:     return 5;
+            case CURE:       return 4;
+            case ENDERMITE:  return 3;   // 末影螨 2 分钟后自然死亡，属情报类
             case MUSIC:      return 2;
             case TRITIUM:    return 2;
             case DAY:        return 1;
@@ -50,6 +58,8 @@ public class FocusOrb {
         public String label = "", sub = "", center = "";
         public float progress = 0f;
         public int accent = -1;
+        /** >=0 时覆盖中心文字颜色（自定义定时器用事件自己的颜色） */
+        public int textColor = -1;
         public ResourceLocation cover = null;  // 专辑封面（仅 TRITIUM 用）
         final Anim alpha = new Anim(0f);   // 0=不可见 1=完全显示
         final Anim travel = new Anim(0f);  // 0=仍贴在胶囊里 1=已飞到焦点位置
@@ -62,6 +72,7 @@ public class FocusOrb {
         Kind kind; ItemStack icon = ItemStack.EMPTY;
         String label = "", sub = "", center = "";
         float progress = 0f; int accent = -1; int pri = 0;
+        int textColor = -1;
         ResourceLocation cover = null;
         Cand(Kind k) { kind = k; pri = priority(k); }
     }
@@ -124,6 +135,13 @@ public class FocusOrb {
             c.accent = Config.theme.bad;
             out.add(c);
         }
+        if (Config.focusXpOrb && XpOrbWatch.active && !XpOrbWatch.onIsland()) {
+            Cand c = new Cand(Kind.XPORB);
+            c.icon = XpOrbWatch.icon;
+            c.label = XpOrbWatch.label; c.sub = XpOrbWatch.sub;
+            c.center = XpOrbWatch.center; c.progress = XpOrbWatch.progress;
+            out.add(c);
+        }
         if (Config.focusMark && MarkWatch.active && !MarkWatch.onIsland()) {
             Cand c = new Cand(Kind.MARK);
             c.label = MarkWatch.label; c.sub = MarkWatch.sub;
@@ -131,10 +149,25 @@ public class FocusOrb {
             c.accent = Config.theme.warn;
             out.add(c);
         }
+        if (Config.focusCloud && CloudWatch.active && !CloudWatch.onIsland()) {
+            Cand c = new Cand(Kind.CLOUD);
+            c.icon = CloudWatch.icon;
+            c.label = CloudWatch.label; c.sub = CloudWatch.sub;
+            c.center = CloudWatch.center; c.progress = CloudWatch.progress;
+            c.accent = CloudWatch.accent;
+            out.add(c);
+        }
         if (Config.focusCure && CureWatch.active && !CureWatch.onIsland()) {
             Cand c = new Cand(Kind.CURE);
             c.label = CureWatch.label; c.sub = CureWatch.sub;
             c.center = CureWatch.center; c.progress = CureWatch.progress;
+            out.add(c);
+        }
+        if (Config.focusEndermite && EndermiteWatch.active && !EndermiteWatch.onIsland()) {
+            Cand c = new Cand(Kind.ENDERMITE);
+            c.icon = EndermiteWatch.icon;
+            c.label = EndermiteWatch.label; c.sub = EndermiteWatch.sub;
+            c.center = EndermiteWatch.center; c.progress = EndermiteWatch.progress;
             out.add(c);
         }
         if (Config.focusAir && VitalsWatch.air.active && !VitalsWatch.airOnIsland()) {
@@ -144,6 +177,24 @@ public class FocusOrb {
             c.accent = VitalsWatch.air.accent;
             out.add(c);
         }
+        // 自定义定时器：TimerCenter 已经把「谁的进哪个槽」算好了（槽 1→TIMER_A，槽 2→TIMER_B），
+        // 这里只按标记取数据，不自己排优先级，呼出/收回才不会错人。
+        if (Config.modTimer) {
+            addTimer(out, Kind.TIMER_A, TimerCenter.bySlot(1));
+            addTimer(out, Kind.TIMER_B, TimerCenter.bySlot(2));
+        }
+    }
+
+    private static void addTimer(List<Cand> out, Kind k, TimerCenter.Event ev) {
+        if (ev == null) return;
+        Cand c = new Cand(k);
+        c.label = ev.name;
+        c.sub = TimerCenter.subOf(ev);
+        c.center = TimerCenter.centerOf(ev);
+        c.progress = ev.progress();
+        c.accent = ev.color;
+        c.textColor = ev.color;
+        out.add(c);
     }
 
     /** 每帧刷新槽位归属与动画。新增数据源只需在 collect() 里加一项。 */
@@ -181,7 +232,8 @@ public class FocusOrb {
             Kind k = assign[i];
             if (k == Kind.NONE) {
                 s.kind = Kind.NONE; s.icon = ItemStack.EMPTY;
-                s.label = ""; s.sub = ""; s.center = ""; s.accent = -1; s.cover = null;
+                s.label = ""; s.sub = ""; s.center = ""; s.accent = -1;
+                s.textColor = -1; s.cover = null;
                 s.alpha.to(0f); s.travel.to(0f);
             } else {
                 Cand c = null;
@@ -189,6 +241,7 @@ public class FocusOrb {
                 if (c != null) {
                     s.kind = k; s.icon = c.icon; s.label = c.label; s.sub = c.sub;
                     s.center = c.center; s.progress = c.progress; s.accent = c.accent;
+                    s.textColor = c.textColor;
                     s.cover = c.cover;
                 }
                 s.alpha.to(1f); s.travel.to(1f);
@@ -215,8 +268,12 @@ public class FocusOrb {
         if (Config.focusHunger && VitalsWatch.hungerPinned()) return Kind.HUNGER;
         if (Config.focusAir && VitalsWatch.airPinned()) return Kind.AIR;
         if (Config.focusDrop && DropWatch.pinned()) return Kind.DROP;
+        if (Config.focusXpOrb && XpOrbWatch.pinned()) return Kind.XPORB;
         if (Config.focusMark && MarkWatch.pinned()) return Kind.MARK;
+        if (Config.focusCloud && CloudWatch.pinned()) return Kind.CLOUD;
         if (Config.focusCure && CureWatch.pinned()) return Kind.CURE;
+        if (Config.focusEndermite && EndermiteWatch.pinned()) return Kind.ENDERMITE;
+        if (Config.modTimer && TimerCenter.anyPinned()) return Kind.TIMER_A;
         return Kind.NONE;
     }
 
@@ -231,8 +288,13 @@ public class FocusOrb {
             case HUNGER:     VitalsWatch.bringBackHunger(); break;
             case AIR:        VitalsWatch.bringBackAir();    break;
             case DROP:       DropWatch.bringBack();         break;
+            case XPORB:      XpOrbWatch.bringBack();        break;
             case MARK:       MarkWatch.bringBack();         break;
+            case CLOUD:      CloudWatch.bringBack();        break;
             case CURE:       CureWatch.bringBack();         break;
+            case ENDERMITE:  EndermiteWatch.bringBack();    break;
+            case TIMER_A:    TimerCenter.bringBackSlot(1);  break;
+            case TIMER_B:    TimerCenter.bringBackSlot(2);  break;
             default: break;
         }
     }
@@ -326,8 +388,9 @@ public class FocusOrb {
             gg.renderItem(s.icon, -8, -8);
             ps.popPose();
         } else if (!s.center.isEmpty()) {
+            int col = s.textColor >= 0 ? s.textColor : th.text;
             gg.drawCenteredString(font, s.center, (int) cx, (int) (cy - 4f),
-                    RenderUtil.argb(th.text, 0.95f * a));
+                    RenderUtil.argb(col, 0.95f * a));
         }
     }
 
@@ -335,7 +398,8 @@ public class FocusOrb {
         for (Slot s : slots) {
             s.kind = Kind.NONE;
             s.icon = ItemStack.EMPTY;
-            s.label = ""; s.sub = ""; s.center = ""; s.accent = -1; s.cover = null;
+            s.label = ""; s.sub = ""; s.center = ""; s.accent = -1;
+            s.textColor = -1; s.cover = null;
             s.alpha.snap(0f); s.travel.snap(0f);
         }
         lastKinds[0] = Kind.NONE;

@@ -4,10 +4,11 @@
 > 配套文档：`README.md`（功能与操作）、`BUILD.md`（从零编译教程）。
 
 - **modId**：`dynamicisland`
-- **版本**：1.0.0
+- **版本**：1.0.3
 - **平台**：Minecraft 1.20.1 / Forge 47.1.3，**纯客户端模组**（服务端零逻辑，`server` 侧仅有一个空的 `ServerBridge` 占位以满足 `mods.toml` 两侧加载检查）
-- **代码规模**：约 6900 行 Java / 55 个文件
+- **代码规模**：约 8900 行 Java / 62 个文件
 - **许可**：MIT
+- **更新日志**：`CHANGELOG.md`
 
 ---
 
@@ -71,9 +72,16 @@ com.dynamicisland
 | `PotionWatch.java`     | 长效药水剩余                                            | 每 tick                       |
 | `VitalsWatch.java`     | 饥饿 / 氧气                                           | 每 tick                       |
 | `DropWatch.java`       | **死亡掉落物回收倒计时**                                    | 死亡打点 + 每 tick                |
+| `XpOrbWatch.java`      | **经验球消失倒计时**（与掉落物同为 6000 tick）                     | 每 tick                       |
+| `CloudWatch.java`      | **滞留药水 / 效果云剩余时间**（AreaEffectCloud）                   | 每 tick                       |
+| `EndermiteWatch.java`  | **末影螨存活时间**（2400 tick）                              | 每 tick                       |
 | `MarkWatch.java`       | 被标记（发光效果）                                         | 每 tick                       |
 | `CureWatch.java`       | **僵尸村民治愈进度**                                      | 每 tick                       |
 | `PetWatch.java`        | 宠物死亡 / 拴绳断裂通知                                     | 每 tick                       |
+| `SurvivalWatch.java`   | **细雪冻结进度 + 头卡方块的窒息存活估算**                            | 每 tick                       |
+| `CombatWatch.java`     | **盾牌破防禁用倒计时（5 秒）**                                | 每 tick                       |
+| `FishingWatch.java`    | **钓鱼咬钩窗口**（读 `FishingHook.biting`）                        | 每 tick                       |
+| `TimerCenter.java`     | **自定义定时器 / 倒计时**：数据模型、tick 推进、落盘、焦点槽归属                    | 每 tick                       |
 
 ### 2.2 渲染层
 
@@ -90,6 +98,8 @@ com.dynamicisland
 | `DiSlider.java` / `ColorButton.java` | 自绘控件                                                                    |
 | `IslandScreen.java`                  | 设置界面（多页）                                                                |
 | `DragScreen.java`                    | 透明拖动定位界面                                                                |
+| `FunctionCenter.java`                | **功能中心**：自定义功能的入口界面（分页标签 + 事件列表 + 操作按钮）                                     |
+| `TimerEditScreen.java`               | **定时器添加 / 编辑表单**（名称 / 描述 / 类型 / 时长 / 颜色，右侧带实时预览）                          |
 
 ### 2.3 入口与事件
 
@@ -113,6 +123,7 @@ com.dynamicisland
 | `FOCUS`        | `key.dynamicisland.focus`      | `B` | 呼出最高优先级焦点 |
 | `FOCUS_LEFT`   | `key.dynamicisland.focusLeft`  | `G` | 呼出左焦点     |
 | `FOCUS_RIGHT`  | `key.dynamicisland.focusRight` | `H` | 呼出右焦点     |
+| `CENTER`       | `key.dynamicisland.center`     | `M` | 打开功能中心    |
 
 **约定**：全部走「边沿触发」——在 `handleKeys` 里比对 `isDown() && !prevXxx`，处理完把 `prevXxx = isDown()`。打开界面类操作加 `mc.screen == null` 守卫，避免在其它界面里误触。
 
@@ -144,8 +155,9 @@ com.dynamicisland
 
 **仲裁在 `FocusOrb` 里做：**
 
-- `enum Kind { NONE, MUSIC, TRITIUM, DAY, DURABILITY, POTION, HUNGER, AIR, DROP, MARK, CURE }`
-- `priority(Kind)` 决定谁占左槽 / 右槽：**AIR(9) > DROP(8) > MARK(7) > DURABILITY(6) > HUNGER(5) > POTION(4) > CURE(3) > MUSIC/TRITIUM(2) > DAY(1)**
+- `enum Kind { NONE, MUSIC, TRITIUM, DAY, DURABILITY, POTION, HUNGER, AIR, DROP, MARK, CURE, XPORB, CLOUD, ENDERMITE, TIMER_A, TIMER_B }`
+- `priority(Kind)` 决定谁占左槽 / 右槽：**AIR(13) > DROP(12) > TIMER_A/B(11) > XPORB(10) > MARK(9) > CLOUD(8) > DURABILITY(7) > HUNGER(6) > POTION(5) > CURE(4) > ENDERMITE(3) > MUSIC/TRITIUM(2) > DAY(1)**
+- **`TIMER_A` / `TIMER_B` 是「槽位」而不是「某个事件」**：焦点只有两个槽，`TimerCenter.assignSlots()` 每 tick 把最紧急的两条事件标成槽 1 / 槽 2，`collect()` 只按标记取数据。所以呼出 / 收回永远不会认错事件（`release(TIMER_A)` → `TimerCenter.bringBackSlot(1)`）。
 - 最多 2 个槽位（`SLOT_LEFT` / `SLOT_RIGHT`），**槽位归属保持上一帧位置**以避免抖动。
 - 渲染调用点：`IslandRenderer.render` 第 214–217 行，焦点随胶囊展开而整体淡出（`1f - clamp(grow)`）。
 
@@ -161,6 +173,9 @@ com.dynamicisland
 | ----------------------------- | --------------------- | ------------------------------------------------------ | ------------------------------------------------ |
 | `MinecraftAccessor`           | `Minecraft`           | `fps`                                                  | 读真实帧率（`Metrics` 优先用，失败降级）                        |
 | `ItemEntityAccessor`          | `ItemEntity`          | `age`                                                  | 掉落物消失计时；**比 `tickCount` 准**（物品合并后 `age` 会重置为较小值） |
+| `ExperienceOrbAccessor`       | `ExperienceOrb`       | `age`                                                  | 经验球消失计时（同为 6000 tick）；读不到退回 `tickCount`           |
+| `EndermiteAccessor`           | `Endermite`           | `life`                                                 | 末影螨存活时间（2400 tick）；读不到退回 `tickCount`               |
+| `FishingHookAccessor`         | `FishingHook`         | `biting`                                               | 钓鱼咬钩判定（由同步数据 `DATA_BITING` 驱动，多人也准）                            |
 | `MultiPlayerGameModeAccessor` | `MultiPlayerGameMode` | `destroyProgress` / `destroyBlockPos` / `isDestroying` | 挖掘进度                                             |
 | `EntityAccessor`              | `Entity`              | `portalTime`                                           | 传送门状态感知                                          |
 | `VillagerAccessor`            | `Villager`            | `lastRestockGameTime` / `numberOfRestocksToday`        | 村民补货倒计时                                          |
@@ -183,8 +198,10 @@ com.dynamicisland
 4. MusicCard → TritiumLink → DayClock → DepthWatch
    → BlastWatch → FallWatch → RideWatch → TradeWatch
    → DurabilityWatch → PotionWatch → VitalsWatch
+   → SurvivalWatch → CombatWatch → FishingWatch
 5. 死亡上升沿检测：isDeadOrDying() 由 false→true 时调 DropWatch.markDeath(坐标)
-6. DropWatch → MarkWatch → CureWatch → FocusOrb.update(1/20f) → PetWatch
+6. DropWatch → MarkWatch → CureWatch → XpOrbWatch → CloudWatch → EndermiteWatch
+   → TimerCenter.update(1/20f) → FocusOrb.update(1/20f) → PetWatch
 7. 每 20 tick（1 秒）：Notifier.check(mc) + Notifier.checkSystem()
 8. handleKeys(mc)
 ```
@@ -267,6 +284,15 @@ Notifier.push(标题, 副标题, 图标, 强调色, "去重键", 冷却秒, Noti
 
 去重键 + 冷却秒可防止刷屏。历史回看自动收录（`Config.noticeHistory`）。
 
+### 给「功能中心」加一个新功能页
+
+功能中心是为后续扩展留的壳，加一页只要三步：
+
+1. `FunctionCenter.TAB_KEY` 加一行文案键（分页按钮自动排布）。
+2. `render` 里那个 `switch (tab)` 加一个分支，画自己的列表；行命中测试复用 `rowAt()`。
+3. 需要落盘就仿 `TimerCenter` 写一个独立的 json（`FMLPaths.CONFIGDIR`），
+   **运行时状态一定标 `transient`**，否则重开游戏会自动"接着跑"，与预期不符。
+
 ### 加一套皮肤
 
 `Theme` 枚举加一行（`id, bg, border, text, textDim, accent, good, warn, bad, dark`），设置界面与 `/island theme` 自动收录。
@@ -292,6 +318,16 @@ Notifier.push(标题, 副标题, 图标, 强调色, "去重键", 冷却秒, Noti
 | 展开动画中内容溢出胶囊             | `drawDashboard` 写死了最终高度坐标                                         | 按实时高度 `cur` 逐行分配                                                                           |
 | 改了 lang / mods.toml 不生效 | 资源未重打包                                                            | `gradlew clean build`                                                                      |
 | 中文注释乱码                  | 编码                                                                | `build.gradle` 已设 UTF-8，编辑器也选 UTF-8                                                        |
+| `mods.toml` 中文变乱码 / 半个汉字    | `processResources` 过滤时用平台编码（中文 Windows = GBK）读写 UTF-8 文件            | `build.gradle` 里已设 `filteringCharset = 'UTF-8'`；**这行别删**                                        |
+| 经验球倒计时一沾经验就刷屏          | 把所有附近经验球都算进来了                                                       | `XpOrbWatch` 只统计超出拾取跟随范围（>12 格）的球；并只在「从无到有」时上台一次                                        |
+| 效果云剩余时间读成 0 或直接不显示     | 读的是 `duration` 而不是 `waitTime + duration`                          | 剩余 = `getWaitTime() + getDuration() − Entity.tickCount`（原版死亡判定同源），别只减 duration                 |
+| 末影螨 / 经验球焦点源有时不显示      | Mixin accessor 字段名对不上，静默降级                                       | 两个 Watch 都有 `tickCount` 兜底，属于预期行为；日志搜 `Mixin apply failed` 确认                                |
+| 钓鱼咬钩提示不出现                | 只用了 `Player.fishing`：该字段由服务端 `FishingHook` 构造时赋值，多人模式的客户端上是 null    | `FishingWatch.ownHook` 会退回扫描附近钩子并按 `getPlayerOwner()` 过滤，**别删这段兜底**                       |
+| 细雪冻结进度一直不动               | `ticksFrozen` 是同步数据，只有服务端在算；客户端读到的有 1~2 tick 延迟                      | 正常现象；不要改用 `tickCount` 之类本地推算                                                                 |
+| 窒息警告在创造模式乱弹              | `isInWall()` 与是否受伤无关                                           | `SurvivalWatch` 已过滤 `isCreative() / isSpectator()`，别删                                            |
+| 定时器圆环中心的时间不是自定义颜色      | 中心文字默认用 `th.text`，颜色要一路透传                                        | `Cand.textColor` → `Slot.textColor` → `drawOrb` 判断 `>=0` 才覆盖；胶囊那边走 `IslandStatus.textColor`（别删）        |
+| 呼出定时器焦点时认错事件             | `TIMER_A/B` 是槽位、不是事件 id                                          | 别在 `collect()` 里自己排事件顺序，一律用 `TimerCenter.bySlot(1/2)`（`assignSlots()` 已经算好）                  |
+| 定时器点完「启用」不动              | 计时用 `ClientTickEvent` 累加，主菜单 / 无玩家时不推进                             | 预期行为（游戏内计时）；暂停游戏也会暂停                                                                    |
 
 ### 诊断三件套
 
@@ -310,7 +346,7 @@ javap -p -c -cp <forge-merged-jar> net.minecraft.world.entity.item.ItemEntity
 ## 十二、编译
 
 ```bash
-gradlew build         # 产物 build/libs/dynamicisland-1.0.0.jar
+gradlew build         # 产物 build/libs/dynamicisland-1.0.3.jar
 gradlew runClient     # 直接启动带模组的客户端测试
 gradlew clean build   # 改了资源文件后
 ```

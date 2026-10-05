@@ -11,6 +11,9 @@
     "EntityAccessor",
     "VillagerAccessor",
     "ItemEntityAccessor",
+    "ExperienceOrbAccessor",
+    "EndermiteAccessor",
+    "FishingHookAccessor",
     "AdvancementToastAccessor",
     "ToastComponentMixin"
   ],

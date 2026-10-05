@@ -314,8 +314,10 @@ public class IslandRenderer {
         if (subW > 0) {
             String sub = RenderUtil.elide(font, st.sub, Math.max(10f, (rightEdge - px) * 0.55f));
             int sw = font.width(sub);
+            // 自定义定时器会用事件自己的颜色显示时间；其它来源仍走皮肤的次要文字色
+            int subCol = st.textColor >= 0 ? st.textColor : th.textDim;
             gg.drawString(font, sub, (int) (rightEdge - sw), (int) (y + 7f),
-                    RenderUtil.argb(th.textDim, 0.95f * fade), false);
+                    RenderUtil.argb(subCol, 0.95f * fade), false);
         }
 
         if (st.showBar) {

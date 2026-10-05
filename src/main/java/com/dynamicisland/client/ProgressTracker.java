@@ -40,6 +40,16 @@ public class ProgressTracker {
             if (s != null) return s;
         }
 
+        // 被埋窒息 / 细雪冻结：同样是「不知道就死」的信息，但让爆炸倒计时先说话
+        s = trySurvival();
+        if (s != null) return s;
+        // 盾牌破防的 5 秒在 PVP 里等于敞开挨打，排在物品使用之前
+        s = tryCombat();
+        if (s != null) return s;
+        // 咬钩窗口只有一瞬，插在挖掘 / 使用之前，保证抢得到胶囊
+        s = tryFishing();
+        if (s != null) return s;
+
         if (Config.modUse) {
             s = tryUse(p);
             if (s != null) return s;
@@ -147,19 +157,52 @@ public class ProgressTracker {
         if (!p.isUsingItem()) return null;
         ItemStack stack = p.getUseItem();
         if (stack.isEmpty()) return null;
-        int remain = p.getUseItemRemainingTicks();
         int duration = stack.getUseDuration();
         if (duration <= 0) return null;
-        float prog = Anim.clamp(1f - remain / (float) duration, 0f, 1f);
+        int remain = p.getUseItemRemainingTicks();
+        int elapsed = Math.max(0, duration - remain);
 
         IslandStatus s = new IslandStatus();
         s.kind = IslandStatus.Kind.USE;
         s.icon = stack;
         s.title = shorten(stack.getHoverName().getString(), 16);
+
+        int full = Config.modBowCharge ? fullChargeTicks(stack) : 0;
+        if (full > 0) {
+            // 弓 / 弩 / 三叉戟：原版界面完全没有读数，这里给精确的蓄力百分比
+            float charge = Anim.clamp(elapsed / (float) full, 0f, 1f);
+            s.sub = Math.round(charge * 100f) + "%";
+            s.progress = charge;
+            return s.withAccent(charge >= 0.999f ? Config.theme.good : Config.theme.warn);
+        }
+
+        float prog = Anim.clamp(elapsed / (float) duration, 0f, 1f);
         float secs = remain / 20f;
         s.sub = duration > 100 ? (int) (prog * 100) + "%" : String.format("%.1fs", secs);
         s.progress = prog;
         return s.withAccent(Config.theme.accent);
+    }
+
+    /**
+     * 蓄力类武器的「满蓄力」需要多少 tick；0 表示不是蓄力类。
+     * 数值全部取原版常量，避免自己写死后被数据包 / 版本改动坑到：
+     * 弓 20（MAX_DRAW_DURATION）、三叉戟 10（THROW_THRESHOLD_TIME）、
+     * 弩由 getChargeDuration(stack) 计算（会算上快速装填附魔）。
+     */
+    private static int fullChargeTicks(ItemStack stack) {
+        try {
+            net.minecraft.world.item.Item it = stack.getItem();
+            if (it instanceof net.minecraft.world.item.BowItem) {
+                return net.minecraft.world.item.BowItem.MAX_DRAW_DURATION;
+            }
+            if (it instanceof net.minecraft.world.item.TridentItem) {
+                return net.minecraft.world.item.TridentItem.THROW_THRESHOLD_TIME;
+            }
+            if (it instanceof net.minecraft.world.item.CrossbowItem) {
+                return net.minecraft.world.item.CrossbowItem.getChargeDuration(stack);
+            }
+        } catch (Throwable ignored) { }
+        return 0;
     }
 
     // ---------- 挖掘 ----------
@@ -257,6 +300,71 @@ public class ProgressTracker {
         return s.withAccent(Config.theme.bad).pulse();
     }
 
+    // ---------- 生存告警：窒息 / 细雪冻结 ----------
+    private static IslandStatus trySurvival() {
+        if (Config.modSuffocate && SurvivalWatch.suffocateActive) {
+            IslandStatus s = new IslandStatus();
+            s.kind = IslandStatus.Kind.ALERT;
+            s.icon = SurvivalWatch.SUFFOCATE_ICON;
+            s.title = I18nS.tr("dynamicisland.state.suffocate");
+            s.sub = SurvivalWatch.suffocateSub;
+            s.progress = SurvivalWatch.suffocateProgress;
+            s.showBar = true;
+            return s.withAccent(Config.theme.bad).pulse();
+        }
+        if (Config.modFreezeWarning && SurvivalWatch.freezeActive) {
+            IslandStatus s = new IslandStatus();
+            s.kind = IslandStatus.Kind.ALERT;
+            s.icon = SurvivalWatch.FREEZE_ICON;
+            s.title = I18nS.tr("dynamicisland.state.freeze");
+            s.sub = SurvivalWatch.freezeSub;
+            s.progress = SurvivalWatch.freezeProgress;
+            s.showBar = true;
+            return SurvivalWatch.freezeUrgent
+                    ? s.withAccent(Config.theme.bad).pulse()
+                    : s.withAccent(Config.theme.accent);
+        }
+        return null;
+    }
+
+    // ---------- 盾牌破防禁用 ----------
+    private static IslandStatus tryCombat() {
+        if (!Config.modShieldBreak) return null;
+        if (CombatWatch.shieldActive) {
+            IslandStatus s = new IslandStatus();
+            s.kind = IslandStatus.Kind.ALERT;
+            s.icon = CombatWatch.SHIELD_ICON;
+            s.title = I18nS.tr("dynamicisland.state.shieldDown");
+            s.sub = CombatWatch.shieldSub;
+            s.progress = CombatWatch.shieldProgress;
+            s.showBar = true;
+            return s.withAccent(Config.theme.bad).pulse();
+        }
+        if (CombatWatch.shieldBack) {
+            IslandStatus s = new IslandStatus();
+            s.kind = IslandStatus.Kind.ALERT;
+            s.icon = CombatWatch.SHIELD_ICON;
+            s.title = I18nS.tr("dynamicisland.state.shieldUp");
+            s.sub = CombatWatch.shieldSub;
+            s.progress = CombatWatch.shieldProgress;
+            s.showBar = true;
+            return s.withAccent(Config.theme.good);
+        }
+        return null;
+    }
+
+    // ---------- 钓鱼咬钩 ----------
+    private static IslandStatus tryFishing() {
+        if (!Config.modFishingBite || !FishingWatch.active) return null;
+        IslandStatus s = new IslandStatus();
+        s.kind = IslandStatus.Kind.ALERT;
+        s.title = I18nS.tr("dynamicisland.state.fishing");
+        s.sub = FishingWatch.sub;
+        s.progress = FishingWatch.progress;
+        s.showBar = true;
+        return s.withAccent(Config.theme.good).pulse();
+    }
+
     // ---------- 载具速度 ----------
     private static IslandStatus rideStatus(LocalPlayer p) {
         if (!RideWatch.active) return null;
@@ -303,6 +411,22 @@ public class ProgressTracker {
     // ---------- 灵动焦点：上台预告 ----------
     /** 焦点来源刚被触发时先在胶囊显示几秒，之后让位给焦点；这里负责那几秒的内容。 */
     private static IslandStatus tryFocusStage(LocalPlayer p) {
+        // 自定义定时器排在最前，且不受「灵动焦点」总开关影响：
+        // 那是玩家自己明确要盯的东西，就算焦点关了也该在胶囊上闪一下。
+        if (Config.modTimer) {
+            TimerCenter.Event ev = TimerCenter.islandEvent();
+            if (ev != null) {
+                IslandStatus s = new IslandStatus();
+                s.kind = IslandStatus.Kind.FOCUS;
+                s.title = ev.name;
+                s.sub = TimerCenter.subOf(ev);
+                s.progress = ev.progress();
+                s.textColor = ev.color;
+                s.showBar = true;
+                return s.withAccent(ev.color);
+            }
+        }
+
         if (!Config.focusEnabled) return null;
 
         if (Config.focusAir && VitalsWatch.airOnIsland()) {
@@ -322,6 +446,15 @@ public class ProgressTracker {
             s.progress = DropWatch.progress;
             return s.withAccent(Config.theme.bad).pulse();
         }
+        if (Config.focusXpOrb && XpOrbWatch.onIsland()) {
+            IslandStatus s = new IslandStatus();
+            s.kind = IslandStatus.Kind.FOCUS;
+            s.icon = XpOrbWatch.icon;
+            s.title = XpOrbWatch.label;
+            s.sub = XpOrbWatch.sub;
+            s.progress = XpOrbWatch.progress;
+            return s.withAccent(Config.theme.good);
+        }
         if (Config.focusMark && MarkWatch.onIsland()) {
             IslandStatus s = new IslandStatus();
             s.kind = IslandStatus.Kind.FOCUS;
@@ -329,6 +462,15 @@ public class ProgressTracker {
             s.sub = MarkWatch.sub;
             s.progress = MarkWatch.progress;
             return s.withAccent(Config.theme.warn).pulse();
+        }
+        if (Config.focusCloud && CloudWatch.onIsland()) {
+            IslandStatus s = new IslandStatus();
+            s.kind = IslandStatus.Kind.FOCUS;
+            s.icon = CloudWatch.icon;
+            s.title = CloudWatch.label;
+            s.sub = CloudWatch.sub;
+            s.progress = CloudWatch.progress;
+            return CloudWatch.accent < 0 ? s.withAccent(Config.theme.accent) : s.withAccent(CloudWatch.accent);
         }
         if (Config.focusDurability && DurabilityWatch.onIsland()) {
             IslandStatus s = new IslandStatus();
@@ -361,6 +503,15 @@ public class ProgressTracker {
             s.title = CureWatch.label;
             s.sub = CureWatch.sub;
             s.progress = CureWatch.progress;
+            return s.withAccent(Config.theme.accent);
+        }
+        if (Config.focusEndermite && EndermiteWatch.onIsland()) {
+            IslandStatus s = new IslandStatus();
+            s.kind = IslandStatus.Kind.FOCUS;
+            s.icon = EndermiteWatch.icon;
+            s.title = EndermiteWatch.label;
+            s.sub = EndermiteWatch.sub;
+            s.progress = EndermiteWatch.progress;
             return s.withAccent(Config.theme.accent);
         }
         return null;

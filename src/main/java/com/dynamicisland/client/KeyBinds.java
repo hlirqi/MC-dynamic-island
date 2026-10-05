@@ -25,6 +25,8 @@ public class KeyBinds {
             InputConstants.Type.KEYSYM, InputConstants.KEY_G, CAT);
     public static final KeyMapping FOCUS_RIGHT = new KeyMapping("key.dynamicisland.focusRight",
             InputConstants.Type.KEYSYM, InputConstants.KEY_H, CAT);
+    public static final KeyMapping CENTER = new KeyMapping("key.dynamicisland.center",
+            InputConstants.Type.KEYSYM, InputConstants.KEY_M, CAT);
 
     public static void register(RegisterKeyMappingsEvent e) {
         e.register(TOGGLE);
@@ -36,5 +38,6 @@ public class KeyBinds {
         e.register(FOCUS);
         e.register(FOCUS_LEFT);
         e.register(FOCUS_RIGHT);
+        e.register(CENTER);
     }
 }

@@ -69,6 +69,13 @@ public class Config {
     public static final ForgeConfigSpec.BooleanValue MODULE_FALL;
     public static final ForgeConfigSpec.BooleanValue MODULE_RIDE;
     public static final ForgeConfigSpec.BooleanValue MODULE_TRADE;
+    public static final ForgeConfigSpec.BooleanValue MODULE_FREEZE_WARN;
+    public static final ForgeConfigSpec.BooleanValue MODULE_SUFFOCATE;
+    public static final ForgeConfigSpec.BooleanValue MODULE_BOW_CHARGE;
+    public static final ForgeConfigSpec.BooleanValue MODULE_FISHING_BITE;
+    public static final ForgeConfigSpec.BooleanValue MODULE_SHIELD_BREAK;
+    public static final ForgeConfigSpec.BooleanValue MODULE_TIMER;
+    public static final ForgeConfigSpec.BooleanValue TIMER_NOTIFY;
     public static final ForgeConfigSpec.DoubleValue RIDE_MIN_SPEED;
 
     public static final ForgeConfigSpec.ConfigValue<String> COLOR_ISLAND;
@@ -97,6 +104,9 @@ public class Config {
     public static final ForgeConfigSpec.BooleanValue FOCUS_DROP;
     public static final ForgeConfigSpec.BooleanValue FOCUS_MARK;
     public static final ForgeConfigSpec.BooleanValue FOCUS_CURE;
+    public static final ForgeConfigSpec.BooleanValue FOCUS_XP_ORB;
+    public static final ForgeConfigSpec.BooleanValue FOCUS_CLOUD;
+    public static final ForgeConfigSpec.BooleanValue FOCUS_ENDERMITE;
     public static final ForgeConfigSpec.BooleanValue NOTICE_DROP_WARN;
     public static final ForgeConfigSpec.BooleanValue NOTICE_SYSTEM;
     public static final ForgeConfigSpec.BooleanValue NOTICE_PLAYER;
@@ -184,6 +194,19 @@ public class Config {
         MODULE_FALL = b.comment("下落时预测落地伤害、是否致死与剩余时间").define("fallPredict", true);
         MODULE_RIDE = b.comment("矿车 / 船 / 鞘翅高速时显示实时速度").define("rideSpeed", true);
         MODULE_TRADE = b.comment("村民交易锁定后的补货倒计时").define("tradeRestock", true);
+        MODULE_FREEZE_WARN = b.comment("细雪冻结进度：站在细雪里时显示冻结进度与剩余秒数（原版零提示）")
+                .define("freezeWarning", true);
+        MODULE_SUFFOCATE = b.comment("窒息警告：头卡进方块时显示「还能撑多久」（按 1 心/秒估算）")
+                .define("suffocate", true);
+        MODULE_BOW_CHARGE = b.comment("弓箭蓄力百分比：弓 / 弩 / 三叉戟显示精确蓄力读数")
+                .define("bowCharge", true);
+        MODULE_FISHING_BITE = b.comment("钓鱼咬钩提示：浮标下沉（鱼咬钩）的一瞬在胶囊上提示")
+                .define("fishingBite", true);
+        MODULE_SHIELD_BREAK = b.comment("盾牌禁用倒计时：被斧头破防后倒数 5 秒，并提示恢复")
+                .define("shieldBreak", true);
+        MODULE_TIMER = b.comment("自定义定时器 / 倒计时：在「功能中心」里添加，并入灵动焦点")
+                .define("customTimer", true);
+        TIMER_NOTIFY = b.comment("自定义定时器到达目标时间时推送通知").define("timerNotify", true);
         RIDE_MIN_SPEED = b.comment("载具速度低于该值(km/h)就不展开").defineInRange("rideMinSpeed", 10.0D, 0.0D, 80.0D);
         b.pop();
 
@@ -224,6 +247,12 @@ public class Config {
         FOCUS_DROP = b.comment("死亡掉落物回收倒计时并入灵动焦点").define("focusDrop", true);
         FOCUS_MARK = b.comment("被骷髅 / 光谱箭标记（发光）并入灵动焦点").define("focusMark", true);
         FOCUS_CURE = b.comment("僵尸村民治愈进度并入灵动焦点").define("focusCure", true);
+        FOCUS_XP_ORB = b.comment("经验球消失倒计时并入灵动焦点（只统计够不着的那些，5 分钟后永久消失）")
+                .define("focusXpOrb", true);
+        FOCUS_CLOUD = b.comment("滞留药水 / 效果云（AreaEffectCloud）剩余时间并入灵动焦点")
+                .define("focusCloud", true);
+        FOCUS_ENDERMITE = b.comment("末影螨存活时间（2 分钟后自然死亡）并入灵动焦点")
+                .define("focusEndermite", true);
         NOTICE_DROP_WARN = b.comment("掉落物最后 30 秒播报").define("noticeDropWarn", true);
         NOTICE_SYSTEM = b.comment("系统告警：内存过高 / 帧率骤降 / TPS 崩溃").define("noticeSystem", true);
         NOTICE_PLAYER = b.comment("玩家进出服务器提示").define("noticePlayer", true);
@@ -259,6 +288,9 @@ public class Config {
     public static boolean modAttack = true, modPickup = true, modHotbar = true;
     public static boolean modMusic = true, modDayTime = true, modDepth = true;
     public static boolean modBlast = true, modFall = true, modRide = true, modTrade = true;
+    public static boolean modFreezeWarning = true, modSuffocate = true, modBowCharge = true;
+    public static boolean modFishingBite = true, modShieldBreak = true;
+    public static boolean modTimer = true, timerNotify = true;
     public static float rideMinSpeed = 10.0F;
     public static boolean modTritium = true, tritiumCover = true;
     public static float tritiumHold = 3.0F, tritiumEndWarn = 5.0F;
@@ -270,6 +302,7 @@ public class Config {
     public static boolean focusMusic = true, focusDay = true, focusDurability = true;
     public static boolean focusPotion = true, focusHunger = true, focusAir = true;
     public static boolean focusDrop = true, focusMark = true, focusCure = true;
+    public static boolean focusXpOrb = true, focusCloud = true, focusEndermite = true;
     public static boolean noticeDropWarn = true, noticeSystem = true;
     public static boolean noticePlayer = true, noticePet = true, noticeHistory = true;
     public static int noticeSound = 1;
@@ -316,6 +349,13 @@ public class Config {
         modFall = MODULE_FALL.get();
         modRide = MODULE_RIDE.get();
         modTrade = MODULE_TRADE.get();
+        modFreezeWarning = MODULE_FREEZE_WARN.get();
+        modSuffocate = MODULE_SUFFOCATE.get();
+        modBowCharge = MODULE_BOW_CHARGE.get();
+        modFishingBite = MODULE_FISHING_BITE.get();
+        modShieldBreak = MODULE_SHIELD_BREAK.get();
+        modTimer = MODULE_TIMER.get();
+        timerNotify = TIMER_NOTIFY.get();
         rideMinSpeed = RIDE_MIN_SPEED.get().floatValue();
         colorIsland = parseColor(COLOR_ISLAND.get());
         colorInfo = parseColor(COLOR_INFO.get());
@@ -340,6 +380,9 @@ public class Config {
         focusDrop = FOCUS_DROP.get();
         focusMark = FOCUS_MARK.get();
         focusCure = FOCUS_CURE.get();
+        focusXpOrb = FOCUS_XP_ORB.get();
+        focusCloud = FOCUS_CLOUD.get();
+        focusEndermite = FOCUS_ENDERMITE.get();
         noticeDropWarn = NOTICE_DROP_WARN.get();
         noticeSystem = NOTICE_SYSTEM.get();
         noticePlayer = NOTICE_PLAYER.get();
@@ -439,6 +482,13 @@ public class Config {
         MODULE_FALL.set(modFall);
         MODULE_RIDE.set(modRide);
         MODULE_TRADE.set(modTrade);
+        MODULE_FREEZE_WARN.set(modFreezeWarning);
+        MODULE_SUFFOCATE.set(modSuffocate);
+        MODULE_BOW_CHARGE.set(modBowCharge);
+        MODULE_FISHING_BITE.set(modFishingBite);
+        MODULE_SHIELD_BREAK.set(modShieldBreak);
+        MODULE_TIMER.set(modTimer);
+        TIMER_NOTIFY.set(timerNotify);
         RIDE_MIN_SPEED.set((double) rideMinSpeed);
         COLOR_ISLAND.set(hex(colorIsland));
         COLOR_INFO.set(hex(colorInfo));
@@ -463,6 +513,9 @@ public class Config {
         FOCUS_DROP.set(focusDrop);
         FOCUS_MARK.set(focusMark);
         FOCUS_CURE.set(focusCure);
+        FOCUS_XP_ORB.set(focusXpOrb);
+        FOCUS_CLOUD.set(focusCloud);
+        FOCUS_ENDERMITE.set(focusEndermite);
         NOTICE_DROP_WARN.set(noticeDropWarn);
         NOTICE_SYSTEM.set(noticeSystem);
         NOTICE_PLAYER.set(noticePlayer);

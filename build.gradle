@@ -76,6 +76,9 @@ tasks.withType(JavaCompile).configureEach {
 
 processResources {
     inputs.property 'version', project.version
+    // 必须显式指定 UTF-8：默认走平台编码（中文 Windows 上是 GBK），
+    // 会把 UTF-8 的 mods.toml 按 GBK 读进来再写出去，导致中文描述乱码。
+    filteringCharset = 'UTF-8'
     filesMatching(['META-INF/mods.toml']) { expand version: project.version }
 }
 

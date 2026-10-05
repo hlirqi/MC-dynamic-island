@@ -15,6 +15,8 @@ public class IslandStatus {
     public ItemStack icon = ItemStack.EMPTY;
     public ResourceLocation cover = null;  // 专辑封面（Tritium 联动用，优先于 icon）
     public int accent = -1;      // -1 表示用主题强调色
+    /** >=0 时覆盖卡片里「时间」那行文字的颜色（自定义定时器用事件自己的颜色） */
+    public int textColor = -1;
     public boolean pulse = false; // 心跳/闪烁动画
     public boolean valid = true;
     public boolean showBar = true; // 准星看方块这类没有进度的卡片可以关掉进度条

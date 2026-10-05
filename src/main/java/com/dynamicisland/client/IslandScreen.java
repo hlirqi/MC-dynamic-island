@@ -178,6 +178,27 @@ public class IslandScreen extends Screen {
         toggle(col1(), topAt(), "dynamicisland.opt.xpProgress", () -> Config.modXp, v -> Config.modXp = v);
         note("dynamicisland.note.extras");
 
+        section("dynamicisland.section.combat");
+        toggle(col0(), row(), "dynamicisland.opt.freezeWarning", () -> Config.modFreezeWarning,
+                v -> Config.modFreezeWarning = v);
+        toggle(col1(), topAt(), "dynamicisland.opt.suffocate", () -> Config.modSuffocate,
+                v -> Config.modSuffocate = v);
+        toggle(col0(), row(), "dynamicisland.opt.bowCharge", () -> Config.modBowCharge,
+                v -> Config.modBowCharge = v);
+        toggle(col1(), topAt(), "dynamicisland.opt.fishingBite", () -> Config.modFishingBite,
+                v -> Config.modFishingBite = v);
+        toggle(col0(), row(), "dynamicisland.opt.shieldBreak", () -> Config.modShieldBreak,
+                v -> Config.modShieldBreak = v);
+        note("dynamicisland.note.combat");
+
+        section("dynamicisland.section.timer");
+        toggle(col0(), row(), "dynamicisland.opt.customTimer", () -> Config.modTimer,
+                v -> Config.modTimer = v);
+        toggle(col1(), topAt(), "dynamicisland.opt.timerNotify", () -> Config.timerNotify,
+                v -> Config.timerNotify = v);
+        wide(row(), "dynamicisland.screen.openCenter", b -> Minecraft.getInstance().setScreen(new FunctionCenter(this)));
+        noteRaw(tr("dynamicisland.note.timer") + "  " + keyName(KeyBinds.CENTER));
+
         section("dynamicisland.section.danger");
         toggle(col0(), row(), "dynamicisland.opt.blastCountdown", () -> Config.modBlast,
                 v -> Config.modBlast = v);
@@ -325,6 +346,12 @@ public class IslandScreen extends Screen {
                 v -> Config.focusMark = v);
         toggle(col0(), row(), "dynamicisland.opt.focusCure", () -> Config.focusCure,
                 v -> Config.focusCure = v);
+        toggle(col1(), topAt(), "dynamicisland.opt.focusXpOrb", () -> Config.focusXpOrb,
+                v -> Config.focusXpOrb = v);
+        toggle(col0(), row(), "dynamicisland.opt.focusCloud", () -> Config.focusCloud,
+                v -> Config.focusCloud = v);
+        toggle(col1(), topAt(), "dynamicisland.opt.focusEndermite", () -> Config.focusEndermite,
+                v -> Config.focusEndermite = v);
         note("dynamicisland.note.focusSources");
 
         section("dynamicisland.section.focusThresh");

@@ -15,7 +15,7 @@ public class ClientEvents {
     public static final ClientEvents INSTANCE = new ClientEvents();
     private boolean prevToggle = false, prevExpand = false, prevTheme = false, prevPos = false;
     private boolean prevPanel = false, prevDeathRecall = false, prevFocus = false;
-    private boolean prevFocusLeft = false, prevFocusRight = false;
+    private boolean prevFocusLeft = false, prevFocusRight = false, prevCenter = false;
     private boolean wasDead = false;
     private int secondCounter = 0;
 
@@ -51,6 +51,10 @@ public class ClientEvents {
         DurabilityWatch.tick(1f / 20f, mc.player);
         PotionWatch.tick(1f / 20f, mc.player);
         VitalsWatch.tick(1f / 20f, mc.player);
+        // 生存 / 战斗 / 钓鱼：都是短时信息，直接上胶囊，不进焦点槽
+        SurvivalWatch.tick(1f / 20f, mc.player);
+        CombatWatch.tick(1f / 20f, mc.player);
+        FishingWatch.tick(1f / 20f, mc);
         // 玩家刚死：给掉落物回收打点，之后只认这一带掉出来的东西
         if (mc.player != null) {
             boolean dead = mc.player.isDeadOrDying();
@@ -62,6 +66,11 @@ public class ClientEvents {
         DropWatch.tick(1f / 20f, mc);
         MarkWatch.tick(1f / 20f, mc.player);
         CureWatch.tick(1f / 20f, mc);
+        XpOrbWatch.tick(1f / 20f, mc);
+        CloudWatch.tick(1f / 20f, mc);
+        EndermiteWatch.tick(1f / 20f, mc);
+        // 自定义定时器：推进入度 + 完成通知 + 焦点槽归属，必须在 FocusOrb.update 之前
+        TimerCenter.update(1f / 20f);
         FocusOrb.update(1f / 20f);
         PetWatch.tick(1f / 20f, mc);
 
@@ -198,5 +207,9 @@ public class ClientEvents {
         boolean fr = KeyBinds.FOCUS_RIGHT.isDown();
         if (fr && !prevFocusRight && mc.screen == null) FocusOrb.bringBack(FocusOrb.SLOT_RIGHT);
         prevFocusRight = fr;
+
+        boolean fc = KeyBinds.CENTER.isDown();
+        if (fc && !prevCenter && mc.screen == null) mc.setScreen(new FunctionCenter(null));
+        prevCenter = fc;
     }
 }
