@@ -1,0 +1,7 @@
+{
+  "pack": {
+    "description": "dynamicisland resources",
+    "pack_format": 9,
+    "_comment": "不随模组强制启用，仅为规范占位"
+  }
+}

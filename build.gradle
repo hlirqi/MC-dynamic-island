@@ -1,0 +1,61 @@
+// ===== Dynamic Island · NeoForge 26.2 (Minecraft 26.2 / Java 25) =====
+plugins {
+    id 'java-library'
+    id 'net.neoforged.moddev' version '2.0.148'
+}
+
+version = mod_version
+group = mod_group_id
+base { archivesName = 'dynamicisland' }
+
+java {
+    toolchain { languageVersion = JavaLanguageVersion.of(25) }
+}
+
+neoForge {
+    // Minecraft 26.2 对应的 NeoForge 版本（见 https://neoforged.net/）
+    version = project.neoforge_version
+    validateAccessTransformers = true
+
+    runs {
+        client {
+            client()
+            gameDirectory = project.file('run')
+        }
+    }
+
+    mods {
+        dynamicisland {
+            sourceSet sourceSets.main
+        }
+    }
+}
+
+repositories { mavenCentral() }
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    // 默认只报前 100 个错误，移植期需要看全
+    options.compilerArgs += ['-Xmaxerrs', '2000']
+}
+
+// 本机只有 JDK 25，MDG 的资源下载器默认要 21 —— 直接指到 25 上，避免再装一个 JDK
+tasks.named('downloadAssets').configure { t ->
+    if (t.hasProperty('javaLauncher')) {
+        t.javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(25) }
+    }
+}
+
+tasks.register('printCp') {
+    doLast {
+        sourceSets.main.compileClasspath.files.each { println it }
+    }
+}
+
+processResources {
+    inputs.property 'version', project.version
+    // 必须显式指定 UTF-8：默认走平台编码（中文 Windows 上是 GBK），
+    // 会把 UTF-8 的 neoforge.mods.toml 按 GBK 读进来再写出去，导致中文描述乱码。
+    filteringCharset = 'UTF-8'
+    filesMatching(['META-INF/neoforge.mods.toml']) { expand version: project.version }
+}

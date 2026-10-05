@@ -1,0 +1,18 @@
+{
+  "required": false,
+  "package": "com.dynamicisland.mixin",
+  "compatibilityLevel": "JAVA_25",
+  "minVersion": "0.8",
+  "target": "@env(DEFAULT)",
+  "client": [
+    "MultiPlayerGameModeAccessor",
+    "VillagerAccessor",
+    "ItemEntityAccessor",
+    "ExperienceOrbAccessor",
+    "EndermiteAccessor",
+    "AdvancementToastAccessor"
+  ],
+  "injectors": {
+    "defaultRequire": 0
+  }
+}

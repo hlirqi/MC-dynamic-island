@@ -1,0 +1,34 @@
+# 构建产物 / 开发运行目录（都可重新生成）
+build/
+out/
+bin/
+run/
+run-server/
+.gradle/
+
+# 编译中间件
+*.class
+*.jar
+# 但 Gradle Wrapper 必须进仓库
+!gradle/wrapper/gradle-wrapper.jar
+
+# IDE
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+.settings/
+.classpath
+.project
+
+# 日志与崩溃报告
+*.log
+logs/
+crash-reports/
+hs_err_pid*
+
+# 系统
+.DS_Store
+Thumbs.db
+desktop.ini
